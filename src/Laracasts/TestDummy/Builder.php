@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Collection;
 
-class Builder {
-
+class Builder
+{
     /**
      * All user-defined fixtures.
      *
@@ -36,7 +36,7 @@ class Builder {
      * Create a new Builder instance.
      *
      * @param BuildableRepositoryInterface $database
-     * @param array $fixtures
+     * @param array                        $fixtures
      */
     public function __construct(BuildableRepositoryInterface $database, array $fixtures)
     {
@@ -70,40 +70,36 @@ class Builder {
     /**
      * Get a single fixture.
      *
-     * @param string $name
+     * @param  string             $name
      * @throws TestDummyException
      * @return mixed
      */
     public function getFixture($name)
     {
         // We'll first check to see if they gave us a short name.
-        foreach ($this->fixtures as $fixture)
-        {
-            if ($fixture->shortName == $name)
-            {
+        foreach ($this->fixtures as $fixture) {
+            if ($fixture->shortName == $name) {
                 return $fixture;
             }
         }
 
         // If not, we'll do a second sweep, and look for the class name.
-        foreach ($this->fixtures as $fixture)
-        {
-            if ($fixture->name == $name)
-            {
+        foreach ($this->fixtures as $fixture) {
+            if ($fixture->name == $name) {
                 return $fixture;
             }
         }
 
         throw new TestDummyException(
-            'Could not locate a factory with the name: ' . $name
+            'Could not locate a factory with the name: '.$name
         );
     }
 
     /**
      * Build up an entity and populate it with dummy data.
      *
-     * @param string $name
-     * @param array $attributes
+     * @param  string $name
+     * @param  array  $attributes
      * @return array
      */
     public function build($name, $attributes = [])
@@ -118,14 +114,13 @@ class Builder {
     /**
      * Build and persist a named entity.
      *
-     * @param string $name
-     * @param array $attributes
+     * @param  string $name
+     * @param  array  $attributes
      * @return mixed
      */
     public function create($name, array $attributes = [])
     {
-        $entities = array_map(function() use($name, $attributes)
-        {
+        $entities = array_map(function () use ($name, $attributes) {
             return $this->persist($name, $attributes);
         }, range(1, $this->getTimes()));
 
@@ -151,7 +146,7 @@ class Builder {
     /**
      * Apply Faker dummy values to the attributes.
      *
-     * @param  array  $attributes
+     * @param  array $attributes
      * @return array
      */
     protected function triggerFakerOnAttributes(array $attributes)
@@ -162,8 +157,7 @@ class Builder {
 
         // So we can now filter through our attributes and call these
         // closures, which will generate the proper Faker values.
-        return array_map(function($attribute)
-        {
+        return array_map(function ($attribute) {
             return is_callable($attribute) ? $attribute() : $attribute;
         }, $attributes);
     }
@@ -171,23 +165,21 @@ class Builder {
     /**
      * Persist the entity and any relationships.
      *
-     * @param string $name
-     * @param array $attributes
+     * @param  string $name
+     * @param  array  $attributes
      * @return mixed
      */
     protected function persist($name, array $attributes = [])
     {
         $entity = $this->build($name, $attributes);
-        $attributes = $this->database->getAttributes($entity);
+        $databaseAttributes = $this->database->getAttributes($entity);
 
         // We'll filter through all of the columns, and check
         // to see if there are any defined relationships. If there
         // are, then we'll need to create those records as well.
-        foreach ($attributes as $columnName => $value)
-        {
-            if ($relationship =  $this->hasRelationshipAttribute($value))
-            {
-                $entity[$columnName] = $this->fetchRelationship($relationship);
+        foreach ($databaseAttributes as $columnName => $value) {
+            if ($relationship =  $this->hasRelationshipAttribute($value)) {
+                $entity[$columnName] = $this->fetchRelationship($relationship, $attributes);
             }
         }
 
@@ -199,13 +191,12 @@ class Builder {
     /**
      * Check if the attribute refers to a relationship.
      *
-     * @param string $value
+     * @param  string $value
      * @return mixed
      */
     protected function hasRelationshipAttribute($value)
     {
-        if (preg_match('/^factory:(.+)$/i', $value, $matches))
-        {
+        if (preg_match('/^factory:(.+)$/i', $value, $matches)) {
             return $matches[1];
         }
 
@@ -218,14 +209,13 @@ class Builder {
      * @param $relationshipType
      * @return integer
      */
-    protected function fetchRelationship($relationshipType)
+    protected function fetchRelationship($relationshipType, array $attributes = [])
     {
-        if ($this->isRelationshipAlreadyCreated($relationshipType))
-        {
+        if ($this->isRelationshipAlreadyCreated($relationshipType)) {
             return $this->relationshipIds[$relationshipType];
         }
 
-        return $this->relationshipIds[$relationshipType] = $this->persist($relationshipType)->id;
+        return $this->relationshipIds[$relationshipType] = $this->persist($relationshipType, $attributes)->getKey();
     }
 
     /**
@@ -238,5 +228,4 @@ class Builder {
     {
         return isset($this->relationshipIds[$relationshipType]);
     }
-
 }
