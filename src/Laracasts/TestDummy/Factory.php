@@ -9,7 +9,7 @@ class Factory {
      *
      * @var string
      */
-    public static $factoriesPath = 'tests/factories';
+    public static $factoriesPath = 'app/tests/factories';
 
     /**
      * The user registered factories.
